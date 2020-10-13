@@ -1,5 +1,11 @@
 package gopdp
 
+import (
+	"math/big"
+	"github.com/libp2p/go-openssl"
+	"fmt"
+)
+
 const (
 	PRF_KEY_SIZE = 20
 	PRP_KEY_SIZE = 16
@@ -19,4 +25,20 @@ type PDP_params struct {
 
 	block_size    uint
 	num_challenge uint
+}
+
+var PDP_generator Rat
+
+type RSA struct {
+	public 		PublicKey
+	private 	PrivateKey
+}
+
+type PDP_key {
+
+}
+
+func main() {
+	privateKey := GenerateRSAKeyWithExponent(2048,65535)
+	
 }
