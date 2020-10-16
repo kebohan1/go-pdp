@@ -1,7 +1,16 @@
 package gopdp
 
+// #include <openssl/evp.h>
+// #include <openssl/ssl.h>
+// #include <openssl/conf.h>
+//
+
+import "C"
+
 import (
+	"crypto/rand"
 	RSA "crypto/rsa"
+	"github.com/spacemonkeygo/openssl"
 	"math/big"
 	"os"
 )
@@ -15,6 +24,8 @@ const (
 
 	/* 460 blocks gives you 99% chance of detecting an error, 300 blocks gives you 95% chance*/
 	MAGIC_NUM_CHALLENGE_BLOCKS = 460
+
+	USE_E_PDP = 0
 )
 
 type PDP_params struct {
@@ -27,33 +38,33 @@ type PDP_params struct {
 	num_challenge uint
 }
 
-type PDP_generator big.Rat
+type PDP_generator big.Int
 
 type PDP_key struct {
 	rsa *RSA.PrivateKey
 	v   *string
-	g   *PDP_generator
+	g   *big.Int
 }
 
 type PDP_tag struct {
-	Tim            *big.Rat
+	Tim            *big.Int
 	index          uint
-	index_prf      *uint
+	index_prf      *string
 	index_prf_size *uint64
 }
 
 type PDP_challenge struct {
 	c             uint
 	numfileblocks uint
-	g_s           *big.Rat
-	s             *big.Rat
-	k1            *string
-	k2            *string
+	g_s           *big.Int
+	s             *big.Int
+	k1            *[]byte
+	k2            *[]byte
 }
 
 type PDP_proof struct {
-	T        *big.Rat
-	rho_temp *big.Rat
+	T        *big.Int
+	rho_temp *big.Int
 	rho      *string
 	rho_size uint64
 }
@@ -106,12 +117,12 @@ type PDP interface {
 	sanitize_pdp_challenge(challenge *PDP_challenge) *PDP_challenge
 
 	generate_prp_pi(challenge *PDP_challenge) *uint
-	generate_H(input *big.Rat, H_result_size *uint64) *string
+	generate_H(input *big.Int, H_result_size *uint64) *string
 	generate_prf_f(challenge *PDP_challenge, j uint, prf_result_size *uint64) *string
 	generate_prf_w(key *PDP_key, index uint, prf_result_size *uint64) *string
-	generate_fdh_h(key *PDP_key, index_prf *string, index_prf_size uint64) *big.Rat
+	generate_fdh_h(key *PDP_key, index_prf *string, index_prf_size uint64) *big.Int
 
-	pick_pdp_generator(n *big.Rat) *PDP_generator
+	pick_pdp_generator(n *big.Int) *PDP_generator
 	destroy_pdp_generator(g *PDP_generator)
 
 	generate_pdp_tag() *PDP_tag
@@ -122,4 +133,19 @@ type PDP interface {
 
 	generate_pdp_proof() *PDP_proof
 	destroy_pdp_proof(proof *PDP_proof)
+}
+
+func GenerateRandomBytes(n uint) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+
+}
+
+func ModMul(a *big.Int, b *big.Int, m *big.Int) *big.Int {
+	var temp = new(big.Int).Mul(a, b)
+	return new(big.Int).Mod(temp, m)
 }
